@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bên A - Đăng Post</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4a5568;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .connected {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+        .disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #e53e3e;
+        }
+        .post-form {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #e2e8f0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #38a169;
+        }
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .messages {
+            height: 250px;
+            overflow-y: auto;
+            border: 2px solid #e2e8f0;
+            padding: 15px;
+            margin: 20px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #4299e1;
+        }
+        .message.success {
+            background: #c6f6d5;
+            border-left-color: #48bb78;
+        }
+        .message.error {
+            background: #fed7d7;
+            border-left-color: #e53e3e;
+        }
+        .message.info {
+            background: #bee3f8;
+            border-left-color: #4299e1;
+        }
+        .file-upload {
+            border: 2px dashed #cbd5e0;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+        .file-upload:hover {
+            border-color: #4299e1;
+        }
+        .file-list {
+            margin-top: 10px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #edf2f7;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #4299e1;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🅰️ BÊN A - ĐĂNG POST</h1>
+            <p>Gửi bài post đến bên B thông qua WebSocket</p>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Chưa kết nối
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()" class="btn-success">🔗 Kết nối Server</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled class="btn-danger">❌ Ngắt kết nối</button>
+            <button onclick="ping()" class="btn-primary">📡 Ping Test</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalClients">0</div>
+                <div class="stat-label">Tổng Clients</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="roleAClients">0</div>
+                <div class="stat-label">Clients Bên A</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="roleBClients">0</div>
+                <div class="stat-label">Clients Bên B</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="postsSent">0</div>
+                <div class="stat-label">Posts Đã Gửi</div>
+            </div>
+        </div>
+        
+        <div class="post-form">
+            <h3>📝 Tạo Post Mới</h3>
+            
+            <div class="form-group">
+                <label for="authorName">👤 Tên tác giả:</label>
+                <input type="text" id="authorName" placeholder="Nhập tên của bạn..." value="User A">
+            </div>
+            
+            <div class="form-group">
+                <label for="postContent">📄 Nội dung post:</label>
+                <textarea id="postContent" placeholder="Nhập nội dung bài post..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="postCategory">🏷️ Danh mục:</label>
+                <select id="postCategory">
+                    <option value="general">Tổng quát</option>
+                    <option value="news">Tin tức</option>
+                    <option value="announcement">Thông báo</option>
+                    <option value="update">Cập nhật</option>
+                    <option value="urgent">Khẩn cấp</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>📎 Tệp đính kèm:</label>
+                <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileUpload(event)">
+                    <p>Nhấp để chọn file hoặc kéo thả vào đây</p>
+                    <small>Hỗ trợ nhiều file: ảnh, video, tài liệu</small>
+                </div>
+                <div id="fileList" class="file-list"></div>
+            </div>
+            
+            <button onclick="sendPost()" id="sendPostBtn" disabled class="btn-primary">
+                🚀 Gửi Post đến Bên B
+            </button>
+        </div>
+        
+        <div>
+            <h3>📋 Nhật ký hoạt động:</h3>
+            <div id="messages" class="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connected = false;
+        let clientId = null;
+        let selectedFiles = [];
+        let postsSentCount = 0;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+
+        function connect() {
+            try {
+                ws = new WebSocket('ws://localhost:3001');
+                
+                ws.onopen = function(event) {
+                    connected = true;
+                    reconnectAttempts = 0; // Reset khi kết nối thành công
+                    updateStatus('Đã kết nối - Đang đăng ký...', 'connected');
+                    
+                    // Đăng ký với role A
+                    ws.send(JSON.stringify({
+                        type: 'register',
+                        role: 'A',
+                        clientId: 'clientA_' + Date.now()
+                    }));
+                    
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    document.getElementById('sendPostBtn').disabled = false;
+                    addMessage('Kết nối thành công!', 'success');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleMessage(data);
+                    } catch (error) {
+                        console.error('Lỗi parse tin nhắn:', error);
+                        addMessage('Nhận được tin nhắn không hợp lệ: ' + event.data, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    connected = false;
+                    updateStatus('Đã ngắt kết nối', 'disconnected');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    document.getElementById('sendPostBtn').disabled = true;
+                    addMessage('Đã ngắt kết nối khỏi server', 'info');
+                    
+                    // Auto reconnect nếu không phải ngắt kết nối thủ công
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Exponential backoff
+                        addMessage(`Đang thử kết nối lại lần ${reconnectAttempts}/${maxReconnectAttempts} sau ${delay/1000}s...`, 'info');
+                        setTimeout(() => {
+                            if (!connected) connect();
+                        }, delay);
+                    } else {
+                        addMessage('Không thể kết nối sau nhiều lần thử. Vui lòng kiểm tra server.', 'error');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    addMessage('Lỗi kết nối WebSocket', 'error');
+                };
+                
+            } catch (error) {
+                addMessage('Không thể kết nối đến server. Đảm bảo server đang chạy!', 'error');
+                // Auto retry
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                    addMessage(`🔄 Đang thử kết nối lại lần ${reconnectAttempts}/${maxReconnectAttempts} sau ${delay/1000}s...`, 'info');
+                    setTimeout(() => {
+                        connect();
+                    }, delay);
+                }
+            }
+        }
+
+        function disconnect() {
+            reconnectAttempts = maxReconnectAttempts; // Ngừng auto reconnect
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function sendPost() {
+            if (!connected || !ws) {
+                alert('Chưa kết nối đến server!');
+                return;
+            }
+            
+            const content = document.getElementById('postContent').value.trim();
+            const authorName = document.getElementById('authorName').value.trim();
+            const category = document.getElementById('postCategory').value;
+            
+            if (!content) {
+                alert('Vui lòng nhập nội dung post!');
+                return;
+            }
+            
+            // Chuẩn bị dữ liệu attachments (giả lập, trong thực tế cần upload file)
+            const attachments = selectedFiles.map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: `mock://file/${file.name}`, // URL giả lập
+                uploadedAt: new Date().toISOString()
+            }));
+            
+            const postData = {
+                type: 'post',
+                content: content,
+                authorName: authorName,
+                authorId: clientId,
+                attachments: attachments,
+                metadata: {
+                    category: category,
+                    priority: category === 'urgent' ? 'high' : 'normal',
+                    source: 'WebClient_A'
+                }
+            };
+            
+            ws.send(JSON.stringify(postData));
+            
+            // Clear form
+            document.getElementById('postContent').value = '';
+            selectedFiles = [];
+            updateFileList();
+            
+            addMessage(`📤 Đang gửi post: "${content.substring(0, 50)}..."`, 'info');
+        }
+
+        function ping() {
+            if (connected && ws) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+                addMessage('📡 Đã gửi Ping', 'info');
+            }
+        }
+
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'registered':
+                    clientId = data.clientId;
+                    updateStatus(`Đã kết nối - Role: ${data.role} - ID: ${clientId}`, 'connected');
+                    addMessage(`✅ ${data.message}`, 'success');
+                    break;
+                    
+                case 'post_sent':
+                    postsSentCount++;
+                    updateStats();
+                    addMessage(`✅ Post đã gửi thành công! Post ID: ${data.postId}`, 'success');
+                    break;
+                    
+                case 'pong':
+                    addMessage('📡 Pong nhận được!', 'success');
+                    break;
+                    
+                case 'clientCount':
+                    updateClientCount(data);
+                    break;
+                    
+                case 'error':
+                    addMessage(`❌ Lỗi: ${data.message}`, 'error');
+                    break;
+                    
+                default:
+                    addMessage(`📨 Tin nhắn: ${JSON.stringify(data)}`, 'info');
+            }
+        }
+
+        function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            selectedFiles = [...selectedFiles, ...files];
+            updateFileList();
+        }
+
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
+                    <button onclick="removeFile(${index})" style="background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">❌</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        function updateClientCount(data) {
+            document.getElementById('totalClients').textContent = data.total;
+            document.getElementById('roleAClients').textContent = data.roleA;
+            document.getElementById('roleBClients').textContent = data.roleB;
+        }
+
+        function updateStats() {
+            document.getElementById('postsSent').textContent = postsSentCount;
+        }
+
+        function addMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small> - ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(message, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+
+        // Drag & Drop support
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileUpload = document.querySelector('.file-upload');
+            
+            fileUpload.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#4299e1';
+                this.style.backgroundColor = '#f0f8ff';
+            });
+            
+            fileUpload.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e0';
+                this.style.backgroundColor = '';
+            });
+            
+            fileUpload.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e0';
+                this.style.backgroundColor = '';
+                
+                const files = Array.from(e.dataTransfer.files);
+                selectedFiles = [...selectedFiles, ...files];
+                updateFileList();
+            });
+        });
+
+        // Auto connect on load
+        window.onload = function() {
+            // Tự động kết nối khi trang load
+            setTimeout(() => {
+                addMessage('🔄 Đang tự động kết nối đến server...', 'info');
+                connect();
+            }, 500); // Delay 500ms để UI load xong
+        };
+    </script>
+</body>
+</html>

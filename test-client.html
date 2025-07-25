@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Client Khác</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f0f8ff; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        button { padding: 10px 20px; margin: 5px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        #messages { border: 1px solid #ddd; height: 200px; overflow-y: auto; padding: 10px; margin: 10px 0; background: #fafafa; }
+        input { width: 70%; padding: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🚀 Test Client Từ File Khác</h2>
+        <p>File này chứng minh server có thể kết nối với bất kỳ client nào!</p>
+        
+        <button onclick="connect()">Kết nối</button>
+        <button onclick="disconnect()">Ngắt kết nối</button>
+        <button onclick="sendPing()">Ping</button>
+        
+        <br><br>
+        <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." onkeypress="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()">Gửi từ Client Khác</button>
+        
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:3001');
+            
+            ws.onopen = () => {
+                addMessage('✅ Kết nối thành công từ file test-client.html!');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                addMessage(`📨 ${data.type}: ${JSON.stringify(data, null, 2)}`);
+            };
+            
+            ws.onclose = () => {
+                addMessage('❌ Đã ngắt kết nối');
+            };
+            
+            ws.onerror = (error) => {
+                addMessage('🚨 Lỗi: ' + error);
+            };
+        }
+        
+        function disconnect() {
+            if (ws) ws.close();
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            if (ws && input.value) {
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    message: input.value,
+                    sender: 'Test Client (File Khác)'
+                }));
+                input.value = '';
+            }
+        }
+        
+        function sendPing() {
+            if (ws) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }
+        
+        function addMessage(message) {
+            const div = document.getElementById('messages');
+            div.innerHTML += `<div style="margin:5px 0; font-size:12px;">${new Date().toLocaleTimeString()} - ${message}</div>`;
+            div.scrollTop = div.scrollHeight;
+        }
+        
+        // Tự động kết nối khi trang load
+        window.onload = function() {
+            setTimeout(() => {
+                addMessage('🔄 Đang tự động kết nối đến server...');
+                connect();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Client Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #fafafa;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .message.welcome {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .message.chat {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        .message.system {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Client Test</h1>
+        
+        <div id="status" class="status disconnected">
+            Chưa kết nối
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">Kết nối</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Ngắt kết nối</button>
+            <button onclick="ping()">Ping</button>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="nameInput" placeholder="Tên của bạn" value="User">
+            <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendBtn" disabled>Gửi</button>
+        </div>
+        
+        <div id="messages" class="messages"></div>
+        
+        <div>
+            <p><strong>Hướng dẫn:</strong></p>
+            <ul>
+                <li>Nhấn "Kết nối" để kết nối đến WebSocket server</li>
+                <li>Nhập tên và tin nhắn để chat</li>
+                <li>Nhấn "Ping" để test kết nối</li>
+                <li>Mở nhiều tab để test chat nhiều người</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connected = false;
+
+        function connect() {
+            try {
+                ws = new WebSocket('ws://localhost:3001');
+                
+                ws.onopen = function(event) {
+                    connected = true;
+                    updateStatus('Đã kết nối', 'connected');
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    addMessage('Đã kết nối đến server', 'system');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleMessage(data);
+                    } catch (error) {
+                        console.error('Lỗi khi parse tin nhắn:', error);
+                        addMessage('Nhận được tin nhắn không hợp lệ: ' + event.data, 'system');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    connected = false;
+                    updateStatus('Đã ngắt kết nối', 'disconnected');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    document.getElementById('sendBtn').disabled = true;
+                    addMessage('Đã ngắt kết nối khỏi server', 'system');
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('Lỗi WebSocket:', error);
+                    addMessage('Lỗi kết nối WebSocket', 'system');
+                };
+                
+            } catch (error) {
+                console.error('Không thể kết nối:', error);
+                addMessage('Không thể kết nối đến server. Đảm bảo server đang chạy trên port 8080', 'system');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function sendMessage() {
+            if (!connected || !ws) {
+                alert('Chưa kết nối đến server!');
+                return;
+            }
+            
+            const messageInput = document.getElementById('messageInput');
+            const nameInput = document.getElementById('nameInput');
+            const message = messageInput.value.trim();
+            const name = nameInput.value.trim() || 'Anonymous';
+            
+            if (message) {
+                const data = {
+                    type: 'chat',
+                    message: message,
+                    sender: name
+                };
+                
+                ws.send(JSON.stringify(data));
+                messageInput.value = '';
+            }
+        }
+
+        function ping() {
+            if (!connected || !ws) {
+                alert('Chưa kết nối đến server!');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'ping'
+            }));
+        }
+
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'welcome':
+                    addMessage(data.message, 'welcome');
+                    break;
+                    
+                case 'chat':
+                    addMessage(`[${data.sender}]: ${data.message}`, 'chat');
+                    break;
+                    
+                case 'pong':
+                    addMessage('Pong nhận được!', 'system');
+                    break;
+                    
+                case 'clientCount':
+                    addMessage(`Số client đang kết nối: ${data.count}`, 'system');
+                    break;
+                    
+                case 'error':
+                    addMessage(`Lỗi: ${data.message}`, 'system');
+                    break;
+                    
+                default:
+                    addMessage(`Tin nhắn không xác định: ${JSON.stringify(data)}`, 'system');
+            }
+        }
+
+        function addMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small> - ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(message, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Tự động kết nối khi trang load
+        window.onload = function() {
+            setTimeout(() => {
+                addMessage('🔄 Đang tự động kết nối đến server...', 'system');
+                connect();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

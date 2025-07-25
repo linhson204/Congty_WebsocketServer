@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bên B - Nhận Post</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4a5568;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .connected {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+        .disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #e53e3e;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #38a169;
+        }
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #f093fb;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+        }
+        .posts-container {
+            margin: 20px 0;
+        }
+        .post {
+            background: #f8f9fa;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .post:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .post.new {
+            border-color: #f093fb;
+            background: linear-gradient(45deg, #f8f9fa 0%, #fff5f8 100%);
+            animation: newPost 1s ease-in-out;
+        }
+        @keyframes newPost {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .post-author {
+            font-weight: bold;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .post-time {
+            color: #718096;
+            font-size: 12px;
+        }
+        .post-content {
+            margin: 15px 0;
+            line-height: 1.6;
+            color: #4a5568;
+        }
+        .post-metadata {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .metadata-tag {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .metadata-tag.urgent {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        .post-attachments {
+            margin: 15px 0;
+        }
+        .attachment {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #edf2f7;
+            border-radius: 6px;
+            margin: 5px 0;
+        }
+        .attachment-icon {
+            width: 20px;
+            height: 20px;
+        }
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        .messages {
+            height: 200px;
+            overflow-y: auto;
+            border: 2px solid #e2e8f0;
+            padding: 15px;
+            margin: 20px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #f093fb;
+        }
+        .message.success {
+            background: #c6f6d5;
+            border-left-color: #48bb78;
+        }
+        .message.error {
+            background: #fed7d7;
+            border-left-color: #e53e3e;
+        }
+        .message.info {
+            background: #bee3f8;
+            border-left-color: #4299e1;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        .empty-state img {
+            width: 64px;
+            height: 64px;
+            opacity: 0.5;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            align-items: center;
+        }
+        .filter-bar select, .filter-bar input {
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🅱️ BÊN B - NHẬN POST</h1>
+            <p>Nhận và hiển thị bài post từ bên A</p>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Chưa kết nối
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()" class="btn-success">🔗 Kết nối Server</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled class="btn-danger">❌ Ngắt kết nối</button>
+            <button onclick="ping()" class="btn-primary">📡 Ping Test</button>
+            <button onclick="clearPosts()" class="btn-primary">🗑️ Xóa tất cả Posts</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalClients">0</div>
+                <div class="stat-label">Tổng Clients</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="roleAClients">0</div>
+                <div class="stat-label">Clients Bên A</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="roleBClients">0</div>
+                <div class="stat-label">Clients Bên B</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="postsReceived">0</div>
+                <div class="stat-label">Posts Nhận Được</div>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <label>🔍 Lọc:</label>
+            <select id="categoryFilter" onchange="filterPosts()">
+                <option value="">Tất cả danh mục</option>
+                <option value="general">Tổng quát</option>
+                <option value="news">Tin tức</option>
+                <option value="announcement">Thông báo</option>
+                <option value="update">Cập nhật</option>
+                <option value="urgent">Khẩn cấp</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm trong nội dung..." onkeyup="filterPosts()">
+        </div>
+        
+        <div class="posts-container">
+            <h3>📬 Posts từ Bên A:</h3>
+            <div id="postsContainer">
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                    <h4>Chưa có post nào</h4>
+                    <p>Đang chờ nhận post từ bên A...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h3>📋 Nhật ký hoạt động:</h3>
+            <div id="messages" class="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connected = false;
+        let clientId = null;
+        let receivedPosts = [];
+        let postsReceivedCount = 0;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+
+        function connect() {
+            try {
+                ws = new WebSocket('ws://localhost:3001');
+                
+                ws.onopen = function(event) {
+                    connected = true;
+                    reconnectAttempts = 0; // Reset khi kết nối thành công
+                    updateStatus('Đã kết nối - Đang đăng ký...', 'connected');
+                    
+                    // Đăng ký với role B
+                    ws.send(JSON.stringify({
+                        type: 'register',
+                        role: 'B',
+                        clientId: 'clientB_' + Date.now()
+                    }));
+                    
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    addMessage('Kết nối thành công!', 'success');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log(event.data)
+                        handleMessage(data);
+                    } catch (error) {
+                        console.error('Lỗi parse tin nhắn:', error);
+                        addMessage('Nhận được tin nhắn không hợp lệ: ' + event.data, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    connected = false;
+                    updateStatus('Đã ngắt kết nối', 'disconnected');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    addMessage('Đã ngắt kết nối khỏi server', 'info');
+                    
+                    // Auto reconnect nếu không phải ngắt kết nối thủ công
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000); // Exponential backoff
+                        addMessage(`Đang thử kết nối lại lần ${reconnectAttempts}/${maxReconnectAttempts} sau ${delay/1000}s...`, 'info');
+                        setTimeout(() => {
+                            if (!connected) connect();
+                        }, delay);
+                    } else {
+                        addMessage('Không thể kết nối sau nhiều lần thử. Vui lòng kiểm tra server.', 'error');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    addMessage('Lỗi kết nối WebSocket', 'error');
+                };
+                
+            } catch (error) {
+                addMessage('Không thể kết nối đến server. Đảm bảo server đang chạy!', 'error');
+                // Auto retry
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                    addMessage(`Đang thử kết nối lại lần ${reconnectAttempts}/${maxReconnectAttempts} sau ${delay/1000}s...`, 'info');
+                    setTimeout(() => {
+                        connect();
+                    }, delay);
+                }
+            }
+        }
+
+        function disconnect() {
+            reconnectAttempts = maxReconnectAttempts; // Ngừng auto reconnect
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function ping() {
+            if (connected && ws) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+                addMessage('📡 Đã gửi Ping', 'info');
+            }
+        }
+
+        function clearPosts() {
+            receivedPosts = [];
+            postsReceivedCount = 0;
+            updateStats();
+            renderPosts();
+            addMessage('Đã xóa tất cả posts', 'info');
+        }
+
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'registered':
+                    clientId = data.clientId;
+                    updateStatus(`Đã kết nối - Role: ${data.role} - ID: ${clientId}`, 'connected');
+                    addMessage(`${data.message}`, 'success');
+                    break;
+                case 'new_post':
+                    postsReceivedCount++;
+                    receivedPosts.unshift(data); // Thêm vào đầu mảng
+                    updateStats();
+                    renderPosts();
+                    addMessage(`Nhận được post mới từ: ${data.authorName}`, 'success');
+                    showNotification(`Post mới từ ${data.authorName}`);
+                    break;
+                case 'comment':
+                    postsReceivedCount++;
+                    receivedPosts.unshift({
+                        ...data,
+                        isComment: true
+                    });
+                    updateStats();
+                    renderPosts();
+                    addMessage(`Nhận được comment mới từ: ${data.authorName}`, 'info');
+                    showNotification(`Comment mới từ ${data.authorName}`);
+                    break;
+                case 'reply':
+                    postsReceivedCount++;
+                    receivedPosts.unshift({
+                        ...data,
+                        isReply: true
+                    });
+                    updateStats();
+                    renderPosts();
+                    addMessage(`Nhận được reply mới từ: ${data.authorName}`, 'info');
+                    showNotification(`Reply mới từ ${data.authorName}`);
+                    break;
+                case 'pong':
+                    addMessage('Pong nhận được!', 'success');
+                    break;
+                case 'reply_reply_comment':
+                    addMessage('Nhận được tin nhắn', data);
+                    break;
+                case 'clientCount':
+                    updateClientCount(data);
+                    break;
+                case 'error':
+                    addMessage(`Lỗi: ${data.message}`, 'error');
+                    break;
+                default:
+                    addMessage(`Tin nhắn: ${JSON.stringify(data)}`, 'info');
+            }
+        }
+
+        function renderPosts() {
+            const container = document.getElementById('postsContainer');
+            
+            if (receivedPosts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                        <h4>Chưa có post nào</h4>
+                        <p>Đang chờ nhận post từ bên A...</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let postsHtml = '';
+            const filteredPosts = getFilteredPosts();
+            
+            filteredPosts.forEach((post, index) => {
+                const isNew = index === 0 && postsReceivedCount === receivedPosts.length; // Post mới nhất
+                const urgentClass = post.metadata?.priority === 'high' ? 'urgent' : '';
+                const isComment = post.isComment || post.type === 'comment';
+                const isReply = post.isReply || post.type === 'reply';
+                postsHtml += `
+                    <div class="post ${isNew ? 'new' : ''} ${isComment ? 'comment' : ''} ${isReply ? 'reply' : ''}" data-post-id="${post.postId}">
+                        <div class="post-header">
+                            <div class="post-author">
+                                <span>${isReply ? '↩️' : (isComment ? '💬' : '👤')}</span>
+                                <span>${post.authorName || 'Anonymous'}</span>
+                                <span style="color: #718096; font-size: 12px;">(ID: ${post.authorId})</span>
+                            </div>
+                            <div class="post-time">
+                                ${new Date(post.timestamp).toLocaleString()}
+                            </div>
+                        </div>
+                        <div class="post-metadata">
+                            <span class="metadata-tag ${urgentClass}">
+                                ${isReply ? 'Phản hồi' : (isComment ? 'Bình luận' : `🏷️ ${post.metadata?.category || 'general'}`)}
+                            </span>
+                            ${post.metadata?.priority === 'high' && !isComment && !isReply ? '<span class="metadata-tag urgent">🚨 Khẩn cấp</span>' : ''}
+                            ${!isComment && !isReply ? `<span class="metadata-tag">${post.metadata?.source || 'Unknown'}</span>` : ''}
+                        </div>
+                        <div class="post-content">
+                            ${post.content}
+                        </div>
+                        ${post.attachments && post.attachments.length > 0 ? `
+                            <div class="post-attachments">
+                                <strong>📎 Tệp đính kèm:</strong>
+                                ${post.attachments.map(att => `
+                                    <div class="attachment">
+                                        <span>${getFileIcon(att.type)}</span>
+                                        <span>${att.name}</span>
+                                        <span style="color: #718096; font-size: 12px;">(${(att.size / 1024).toFixed(1)} KB)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="post-actions">
+                            <button class="action-btn btn-primary" onclick="markAsRead('${post.postId}')">
+                                Đánh dấu đã đọc
+                            </button>
+                            <button class="action-btn btn-primary" onclick="replyToPost('${post.postId}')">
+                                Phản hồi
+                            </button>
+                            <button class="action-btn btn-danger" onclick="deletePost('${post.postId}')">
+                                Xóa
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = postsHtml;
+        }
+
+        function getFilteredPosts() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            return receivedPosts.filter(post => {
+                const matchesCategory = !categoryFilter || post.metadata?.category === categoryFilter;
+                const matchesSearch = !searchTerm || 
+                    post.content.toLowerCase().includes(searchTerm) ||
+                    post.authorName.toLowerCase().includes(searchTerm);
+                
+                return matchesCategory && matchesSearch;
+            });
+        }
+
+        function filterPosts() {
+            renderPosts();
+        }
+
+        function getFileIcon(fileType) {
+            if (fileType.startsWith('image/')) return '🖼️';
+            if (fileType.startsWith('video/')) return '📹';
+            if (fileType.includes('pdf')) return '📄';
+            if (fileType.includes('word')) return '📝';
+            if (fileType.includes('excel')) return '📊';
+            return '📎';
+        }
+
+        function markAsRead(postId) {
+            addMessage(`Đã đánh dấu post ${postId} là đã đọc`, 'info');
+            // Có thể gửi về server để lưu trạng thái
+        }
+
+        function replyToPost(postId) {
+            const reply = prompt('Nhập phản hồi của bạn:');
+            if (reply) {
+                addMessage(`Đã phản hồi post ${postId}: "${reply}"`, 'info');
+                // Có thể gửi phản hồi về server
+            }
+        }
+
+        function deletePost(postId) {
+            if (confirm('Bạn có chắc muốn xóa post này?')) {
+                receivedPosts = receivedPosts.filter(post => post.postId !== postId);
+                renderPosts();
+                addMessage(`Đã xóa post ${postId}`, 'info');
+            }
+        }
+
+        function showNotification(message) {
+            // Tạo notification đơn giản
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('WebSocket Post', {
+                    body: message,
+                    icon: '📨'
+                });
+            }
+        }
+
+        function updateClientCount(data) {
+            document.getElementById('totalClients').textContent = data.total;
+            document.getElementById('roleAClients').textContent = data.roleA;
+            document.getElementById('roleBClients').textContent = data.roleB;
+        }
+
+        function updateStats() {
+            document.getElementById('postsReceived').textContent = postsReceivedCount;
+        }
+
+        function addMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small> - ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(message, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+
+        // Request notification permission
+        window.onload = function() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            
+            // Tự động kết nối khi trang load
+            setTimeout(() => {
+                addMessage('Đang tự động kết nối đến server...', 'info');
+                connect();
+            }, 500); // Delay 500ms để UI load xong
+        };
+    </script>
+</body>
+</html>
