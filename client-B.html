@@ -293,6 +293,7 @@
             <input type="text" id="searchInput" placeholder="Tìm kiếm trong nội dung..." onkeyup="filterPosts()">
         </div>
         
+
         <div class="posts-container">
             <h3>📬 Posts từ Bên A:</h3>
             <div id="postsContainer">
@@ -301,6 +302,21 @@
                     <h4>Chưa có post nào</h4>
                     <p>Đang chờ nhận post từ bên A...</p>
                 </div>
+            </div>
+        </div>
+
+
+        <!-- Modal bình luận cho từng post -->
+        <div id="commentModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:#fff; color:#333; padding:24px; border-radius:10px; min-width:320px; max-width:90vw; box-shadow:0 4px 24px rgba(0,0,0,0.2); position:relative;">
+                <button onclick="closeCommentModal()" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+                <h3>💬 Bình luận cho bài post</h3>
+                <form id="modalCommentForm" onsubmit="submitCommentModal(event)">
+                    <input type="hidden" id="modalPostId" />
+                    <textarea id="modalCommentContent" rows="3" placeholder="Nhập bình luận..." style="width:100%; margin:10px 0; padding:8px; border-radius:6px; border:1px solid #e2e8f0;"></textarea>
+                    <input id="modalCommentAuthor" type="text" placeholder="Tên của bạn" style="width:100%; margin-bottom:10px; padding:8px; border-radius:6px; border:1px solid #e2e8f0;" />
+                    <button type="submit" class="btn-primary" style="width:100%;">Gửi bình luận</button>
+                </form>
             </div>
         </div>
         
@@ -467,7 +483,6 @@
 
         function renderPosts() {
             const container = document.getElementById('postsContainer');
-            
             if (receivedPosts.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -478,15 +493,20 @@
                 `;
                 return;
             }
-            
             let postsHtml = '';
             const filteredPosts = getFilteredPosts();
-            
             filteredPosts.forEach((post, index) => {
-                const isNew = index === 0 && postsReceivedCount === receivedPosts.length; // Post mới nhất
+                console.log('Post object fields:', Object.keys(post), post);
+                const isNew = index === 0 && postsReceivedCount === receivedPosts.length;
                 const urgentClass = post.metadata?.priority === 'high' ? 'urgent' : '';
                 const isComment = post.isComment || post.type === 'comment';
                 const isReply = post.isReply || post.type === 'reply';
+                // Chỉ hiện nút bình luận cho post gốc (không phải comment/reply)
+                const showCommentBtn = !isComment && !isReply;
+                // Hiện nút phản hồi cho comment (không phải post gốc, không phải reply)
+                const showReplyCommentBtn = isComment && !isReply;
+                // Lấy đúng trường commentId cho reply_comment
+                const commentIdForReply = post.commentId || post.commentId;
                 postsHtml += `
                     <div class="post ${isNew ? 'new' : ''} ${isComment ? 'comment' : ''} ${isReply ? 'reply' : ''}" data-post-id="${post.postId}">
                         <div class="post-header">
@@ -531,11 +551,119 @@
                             <button class="action-btn btn-danger" onclick="deletePost('${post.postId}')">
                                 Xóa
                             </button>
+                            ${showCommentBtn ? `<button class="action-btn btn-primary" onclick="openCommentModal('${post.postId}')">💬 Bình luận</button>` : ''}
+                            ${showReplyCommentBtn ? `<button class="action-btn btn-primary" onclick="openReplyCommentModal('${post.postId}', '${commentIdForReply}')">↩️ Phản hồi bình luận</button>` : ''}
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = postsHtml;
+        }
+        // Modal phản hồi bình luận
+        function openReplyCommentModal(postId, commentId) {
+            // Tạo modal đơn giản
+            const modalHtml = `
+                <div id="replyCommentModalBg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:2000;display:flex;align-items:center;justify-content:center;">
+                    <div style="background:#fff;color:#333;padding:24px;border-radius:10px;min-width:320px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.2);position:relative;">
+                        <button onclick="closeReplyCommentModal()" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+                        <h3>↩️ Phản hồi bình luận</h3>
+                        <form id="replyCommentForm" onsubmit="submitReplyCommentModal(event)">
+                            <input type="hidden" id="replyModalPostId" value="${postId}" />
+                            <input type="hidden" id="replyModalCommentId" value="${commentId}" />
+                            <textarea id="replyModalContent" rows="3" placeholder="Nhập phản hồi..." style="width:100%;margin:10px 0;padding:8px;border-radius:6px;border:1px solid #e2e8f0;"></textarea>
+                            <input id="replyModalAuthor" type="text" placeholder="Tên của bạn" style="width:100%;margin-bottom:10px;padding:8px;border-radius:6px;border:1px solid #e2e8f0;" />
+                            <button type="submit" class="btn-primary" style="width:100%;">Gửi phản hồi</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function closeReplyCommentModal() {
+            const modal = document.getElementById('replyCommentModalBg');
+            if (modal) modal.remove();
+        }
+
+        // Gửi phản hồi bình luận qua websocket
+        function submitReplyCommentModal(event) {
+            event.preventDefault();
+            if (!connected || !ws) {
+                addMessage('Chưa kết nối WebSocket!', 'error');
+                return;
+            }
+            const postId = document.getElementById('replyModalPostId').value;
+            const commentId = document.getElementById('replyModalCommentId').value;
+            const content = document.getElementById('replyModalContent').value.trim();
+            const authorName = document.getElementById('replyModalAuthor').value.trim() || 'Bên B';
+            if (!content) {
+                addMessage('Vui lòng nhập nội dung phản hồi.', 'error');
+                return;
+            }
+            const replyCommentMsg = {
+                type: 'reply_comment_byB',
+                postId,
+                commentId,
+                replyCommentId: 1,
+                URL,
+                content,
+                authorName,
+                authorId: clientId || 'clientB',
+                timestamp: Date.now(),
+                metadata: { source: 'B', category: 'general' },
+            };
+            ws.send(JSON.stringify(replyCommentMsg));
+            addMessage('Đã gửi phản hồi bình luận đến bên A!', 'success');
+            closeReplyCommentModal();
+        }
+        // Hiện modal bình luận cho post cụ thể
+        function openCommentModal(postId) {
+            document.getElementById('modalPostId').value = postId;
+            document.getElementById('modalCommentContent').value = '';
+            document.getElementById('modalCommentAuthor').value = '';
+            document.getElementById('commentModal').style.display = 'flex';
+        }
+
+        function closeCommentModal() {
+            document.getElementById('commentModal').style.display = 'none';
+        }
+
+        // Gửi bình luận cho post cụ thể
+        function submitCommentModal(event) {
+            event.preventDefault();
+            if (!connected || !ws) {
+                addMessage('Chưa kết nối WebSocket!', 'error');
+                return;
+            }
+            const postId = document.getElementById('modalPostId').value;
+            const content = document.getElementById('modalCommentContent').value.trim();
+            const authorName = document.getElementById('modalCommentAuthor').value.trim() || 'Bên B';
+            if (!content) {
+                addMessage('Vui lòng nhập nội dung bình luận.', 'error');
+                return;
+            }
+            const commentMsg = {
+                type: 'comment_byB',
+                postId,
+                content,
+                commentFbId: 1,
+                URL: "",
+                authorName,
+                authorId: clientId || 'clientB',
+                timestamp: Date.now(),
+                metadata: { source: 'B', category: 'general' },
+            };
+            ws.send(JSON.stringify(commentMsg));
+            // Hiển thị ngay bình luận vừa gửi lên UI
+            receivedPosts.unshift({
+                ...commentMsg,
+                isComment: true,
+                timestamp: new Date().toISOString()
+            });
+            postsReceivedCount++;
+            renderPosts();
+            addMessage('Đã gửi bình luận đến bên A!', 'success');
+            closeCommentModal();
         }
 
         function getFilteredPosts() {

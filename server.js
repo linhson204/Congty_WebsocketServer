@@ -85,7 +85,6 @@ wss.on('connection', function connection(ws, request) {
                     break;
 
                 case 'post':
-                    console.log("ksdnjsndfksd");
                     // Xử lý post từ bên A gửi sang bên B
                     if (ws.role === 'A') {
                         const postData = {
@@ -122,40 +121,78 @@ wss.on('connection', function connection(ws, request) {
                     break;
 
                 case 'comment':
-                    // Xử lý comment từ bên A gửi sang bên B
+                    // Xử lý comment từ A gửi sang B hoặc từ B gửi sang A
                     console.log(`Xử lý comment từ client role: ${ws.role}, clientId: ${ws.clientId}`);
                     if (ws.role === 'A') {
+                        const targetRole = 'B';
                         const commentData = {
                             type: 'comment',
-                            postId: parsedData.postId || generatePostId(),
+                            postId: parsedData.postId,
                             content: parsedData.content,
                             attachments: parsedData.attachments || [],
                             authorId: parsedData.authorId || ws.clientId,
                             authorName: parsedData.authorName || 'Anonymous',
-                            URL: parsedData.URL,
+                            URL: parsedData.URL || "",
                             timestamp: new Date().toISOString(),
                             metadata: parsedData.metadata || {}
                         };
-                        
-                        // Gửi comment đến tất cả client có role B
-                        const sentCount = broadcastToRole('B', commentData);
-                        console.log(`Đã gửi comment đến ${sentCount} client role B`);
-                        
-                        // Xác nhận với bên A rằng comment đã được gửi
+                        // Gửi comment đến tất cả client có role còn lại
+                        const sentCount = broadcastToRole(targetRole, commentData);
+                        console.log(`Đã gửi comment đến ${sentCount} client role ${targetRole}`);
+                        // Xác nhận với bên gửi rằng comment đã được gửi
                         ws.send(JSON.stringify({
                             type: 'comment_sent',
                             postId: commentData.postId,
-                            message: 'Comment đã được gửi thành công đến bên B',
+                            message: `Comment đã được gửi thành công đến bên ${targetRole}`,
                             sentToClients: sentCount,
                             timestamp: new Date().toISOString()
                         }));
-                        
-                        console.log(`Comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role B`);
+                        console.log(`Comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role ${targetRole}`);
                     } else {
                         console.log(`Client ${ws.clientId} với role ${ws.role} không được phép gửi comment`);
                         ws.send(JSON.stringify({
                             type: 'error',
-                            message: `Chỉ client role A mới có thể gửi comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
+                            message: `Chỉ client role A hoặc B mới có thể gửi comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
+                            timestamp: new Date().toISOString()
+                        }));
+                    }
+                    break;
+
+                case 'comment_byB':
+                    // Xử lý comment từ A gửi sang B hoặc từ B gửi sang A
+                    console.log(`Xử lý comment từ client role: ${ws.role}, clientId: ${ws.clientId}`);
+                    if (ws.role === 'B') {
+                        const targetRole = 'A';
+                        const commentData = {
+                            type: 'comment_byB',
+                            postId: parsedData.postId,
+                            content: parsedData.content,
+                            attachments: parsedData.attachments || [],
+                            authorId: parsedData.authorId || ws.clientId,
+                            authorName: parsedData.authorName || 'Anonymous',
+                            URL: parsedData.URL || "",
+                            commentFbId: parsedData.commentFbId || parsedData.id_facebookComment ||"1",
+                            timestamp: new Date().toISOString(),
+                            metadata: parsedData.metadata || {}
+                        };
+                        console.log('comment_byB gửi sang A:', commentData);
+                        // Gửi comment đến tất cả client có role còn lại
+                        const sentCount = broadcastToRole(targetRole, commentData);
+                        console.log(`Đã gửi comment đến ${sentCount} client role ${targetRole}`);
+                        // Xác nhận với bên gửi rằng comment đã được gửi
+                        ws.send(JSON.stringify({
+                            type: 'comment_sent',
+                            postId: commentData.postId,
+                            message: `Comment đã được gửi thành công đến bên ${targetRole}`,
+                            sentToClients: sentCount,
+                            timestamp: new Date().toISOString()
+                        }));
+                        console.log(`Comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role ${targetRole}`);
+                    } else {
+                        console.log(`Client ${ws.clientId} với role ${ws.role} không được phép gửi comment`);
+                        ws.send(JSON.stringify({
+                            type: 'error',
+                            message: `Chỉ client role A hoặc B mới có thể gửi comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
                             timestamp: new Date().toISOString()
                         }));
                     }
@@ -201,12 +238,13 @@ wss.on('connection', function connection(ws, request) {
 
 
                 case 'reply_comment':
-                    // Xử lý reply_comment từ bên A gửi sang bên B
+                    // Xử lý reply_comment từ A gửi sang B hoặc từ B gửi sang A
                     console.log(`Xử lý reply_comment từ client role: ${ws.role}, clientId: ${ws.clientId}`);
                     if (ws.role === 'A') {
+                        const targetRole = 'B';
                         const replyCommentData = {
                             type: 'reply_comment',
-                            postId: parsedData.postId || generatePostId(),
+                            postId: parsedData.postId,
                             commentId: parsedData.commentId,
                             content: parsedData.content,
                             attachments: parsedData.attachments || [],
@@ -216,27 +254,65 @@ wss.on('connection', function connection(ws, request) {
                             timestamp: new Date().toISOString(),
                             metadata: parsedData.metadata || {}
                         };
-                        
-                        // Gửi reply_comment đến tất cả client có role B
-                        const sentCount = broadcastToRole('B', replyCommentData);
-                        console.log(`Đã gửi reply_comment đến ${sentCount} client role B`);
-                        
-                        // Xác nhận với bên A rằng reply_comment đã được gửi
+                        // Gửi reply_comment đến tất cả client có role còn lại
+                        const sentCount = broadcastToRole(targetRole, replyCommentData);
+                        console.log(`Đã gửi reply_comment đến ${sentCount} client role ${targetRole}`);
+                        // Xác nhận với bên gửi rằng reply_comment đã được gửi
                         ws.send(JSON.stringify({
                             type: 'reply_comment_sent',
                             postId: replyCommentData.postId,
                             commentId: replyCommentData.commentId,
-                            message: 'reply_comment đã được gửi thành công đến bên B',
+                            message: `reply_comment đã được gửi thành công đến bên ${targetRole}`,
                             sentToClients: sentCount,
                             timestamp: new Date().toISOString()
                         }));
-                        
-                        console.log(`reply_comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role B`);
+                        console.log(`reply_comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role ${targetRole}`);
                     } else {
                         console.log(`Client ${ws.clientId} với role ${ws.role} không được phép gửi reply_comment`);
                         ws.send(JSON.stringify({
                             type: 'error',
-                            message: `Chỉ client role A mới có thể gửi reply_comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
+                            message: `Chỉ client role A hoặc B mới có thể gửi reply_comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
+                            timestamp: new Date().toISOString()
+                        }));
+                    }
+                    break;
+
+                case 'reply_comment_byB':
+                    console.log(`Xử lý reply_comment từ client role: ${ws.role}, clientId: ${ws.clientId}`);
+                    if (ws.role === 'B') {
+                        const targetRole = 'A';
+                        const replyCommentData = {
+                            type: 'reply_comment_byB',
+                            postId: parsedData.postId,
+                            commentId: parsedData.commentId,
+                            replyId: parsedData.replyCommentId || "1",
+                            content: parsedData.content,
+                            attachments: parsedData.attachments || [],
+                            authorId: parsedData.authorId || ws.clientId,
+                            authorName: parsedData.authorName || 'Anonymous',
+                            URL: parsedData.URL,
+                            timestamp: new Date().toISOString(),
+                            metadata: parsedData.metadata || {}
+                        };
+                        console.log('reply_comment_byB gửi sang A:', replyCommentData);
+                        // Gửi reply_comment đến tất cả client có role còn lại
+                        const sentCount = broadcastToRole(targetRole, replyCommentData);
+                        console.log(`Đã gửi reply_comment đến ${sentCount} client role ${targetRole}`);
+                        // Xác nhận với bên gửi rằng reply_comment đã được gửi
+                        ws.send(JSON.stringify({
+                            type: 'reply_comment_sent',
+                            postId: replyCommentData.postId,
+                            commentId: replyCommentData.commentId,
+                            message: `reply_comment đã được gửi thành công đến bên ${targetRole}`,
+                            sentToClients: sentCount,
+                            timestamp: new Date().toISOString()
+                        }));
+                        console.log(`reply_comment từ ${ws.clientId} đã được gửi đến ${sentCount} client role ${targetRole}`);
+                    } else {
+                        console.log(`Client ${ws.clientId} với role ${ws.role} không được phép gửi reply_comment`);
+                        ws.send(JSON.stringify({
+                            type: 'error',
+                            message: `Chỉ client role A hoặc B mới có thể gửi reply_comment. Role hiện tại: ${ws.role || 'chưa đăng ký'}`,
                             timestamp: new Date().toISOString()
                         }));
                     }
@@ -297,6 +373,7 @@ wss.on('connection', function connection(ws, request) {
                             content: parsedData.content,
                             postId: parsedData.postId,
                             comment_id: parsedData.comment_id,
+                            authorName: parsedData.authorName,
                             timestamp: new Date().toISOString(),
                         };
                         console.log('Dữ liệu URL sẽ gửi:', commentResultData);
@@ -335,6 +412,7 @@ wss.on('connection', function connection(ws, request) {
                             status: parsedData.status,
                             postId: parsedData.postId,
                             commentId: parsedData.commentId,
+                            authorName: parsedData.authorName,
                             replyId: parsedData.reply_id,
                             timestamp: new Date().toISOString(),
                         };
@@ -374,6 +452,7 @@ wss.on('connection', function connection(ws, request) {
                             status: parsedData.status,
                             postId: parsedData.postId,
                             commentId: parsedData.commentId,
+                            authorName: parsedData.authorName,
                             replyId: parsedData.reply_to_reply_id,
                             timestamp: new Date().toISOString(),
                         };
@@ -401,7 +480,6 @@ wss.on('connection', function connection(ws, request) {
                         }));
                     }
                     break;
-
                     
                 case 'ping':
                     // Phản hồi pong
